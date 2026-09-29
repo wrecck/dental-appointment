@@ -1,0 +1,302 @@
+// Multi-tenant Dental Clinic SaaS Schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============================================
+// MULTI-TENANT: Clinic (Tenant)
+// ============================================
+model Clinic {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users         User[]
+  patients      Patient[]
+  appointments  Appointment[]
+  dentalCharts  DentalChart[]
+  treatments    Treatment[]
+  payments      Payment[]
+  expenses      Expense[]
+  prescriptions Prescription[]
+  images        PatientImage[]
+}
+
+// ============================================
+// USER (Dentists, Staff)
+// ============================================
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  role         String   @default("dentist") // owner, dentist, receptionist, assistant
+  phone        String?
+  avatar       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  appointments  Appointment[]
+  dentalCharts  DentalChart[]
+  treatments    Treatment[]
+  prescriptions Prescription[]
+
+  @@index([clinicId])
+}
+
+// ============================================
+// PATIENT
+// ============================================
+model Patient {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String
+  dateOfBirth   DateTime?
+  gender        String?
+  address       String?
+  occupation    String?
+  emergencyName String?
+  emergencyPhone String?
+  allergies     String?
+  medicalHistory String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  appointments  Appointment[]
+  dentalCharts  DentalChart[]
+  treatments    Treatment[]
+  payments      Payment[]
+  prescriptions Prescription[]
+  images        PatientImage[]
+
+  @@index([clinicId])
+  @@index([phone])
+}
+
+// ============================================
+// APPOINTMENT
+// ============================================
+model Appointment {
+  id          String   @id @default(cuid())
+  date        DateTime
+  startTime   String
+  endTime     String
+  status      String   @default("scheduled") // scheduled, confirmed, completed, cancelled, no-show
+  type        String   @default("checkup") // checkup, cleaning, treatment, surgery, consultation
+  notes       String?
+  smsReminder Boolean  @default(false)
+  smsSent     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dentistId String
+  dentist   User @relation(fields: [dentistId], references: [id], onDelete: Cascade)
+
+  treatments Treatment[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([dentistId])
+  @@index([date])
+}
+
+// ============================================
+// DENTAL CHART
+// ============================================
+model DentalChart {
+  id        String   @id @default(cuid())
+  toothNumber Int
+  condition String   // healthy, cavity, filling, crown, extraction, root-canal, missing, implant
+  surface   String?  // mesial, distal, occlusal, buccal, lingual (can be combined)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dentistId String
+  dentist   User @relation(fields: [dentistId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+// ============================================
+// TREATMENT
+// ============================================
+model Treatment {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  toothNumber Int?
+  cost        Float
+  status      String   @default("planned") // planned, in-progress, completed
+  date        DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dentistId String
+  dentist   User @relation(fields: [dentistId], references: [id], onDelete: Cascade)
+
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  payments Payment[]
+
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+// ============================================
+// PAYMENT
+// ============================================
+model Payment {
+  id            String   @id @default(cuid())
+  amount        Float
+  method        String   @default("cash") // cash, card, insurance, bank-transfer
+  status        String   @default("completed") // pending, completed, refunded
+  description   String?
+  receiptNumber String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  treatmentId String?
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([date])
+}
+
+// ============================================
+// EXPENSE
+// ============================================
+model Expense {
+  id          String   @id @default(cuid())
+  category    String   // supplies, equipment, rent, utilities, salary, marketing, other
+  description String
+  amount      Float
+  date        DateTime @default(now())
+  vendor      String?
+  receiptUrl  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([date])
+  @@index([category])
+}
+
+// ============================================
+// PRESCRIPTION
+// ============================================
+model Prescription {
+  id           String   @id @default(cuid())
+  medications  String   // JSON string of medications
+  diagnosis    String?
+  instructions String?
+  date         DateTime @default(now())
+  validUntil   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  dentistId String
+  dentist   User @relation(fields: [dentistId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+// ============================================
+// PATIENT IMAGES
+// ============================================
+model PatientImage {
+  id          String   @id @default(cuid())
+  url         String
+  type        String   @default("xray") // xray, photo, document
+  description String?
+  toothNumber Int?
+  createdAt   DateTime @default(now())
+
+  // Multi-tenant relation
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Relations
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([patientId])
+}
