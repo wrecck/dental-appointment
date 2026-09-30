@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const authError = searchParams.get("error");
+    if (!authError) return "";
+    if (authError === "Configuration") {
+      return "Auth is misconfigured. Check AUTH_SECRET and AUTH_URL on Vercel.";
+    }
+    return "Sign-in failed. Please try again.";
+  });
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,15 +37,20 @@ export default function LoginPage() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/dashboard",
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError(
+          result.error === "Configuration"
+            ? "Auth is misconfigured. Check AUTH_SECRET and AUTH_URL on Vercel."
+            : "Invalid email or password"
+        );
         setIsLoading(false);
         return;
       }
 
-      router.push("/dashboard");
+      router.push(result?.url || "/dashboard");
       router.refresh();
     } catch {
       setError("Something went wrong");
@@ -106,5 +119,19 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

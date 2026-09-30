@@ -21,9 +21,10 @@ Multi-tenant dental clinic SaaS (web). The Next.js app lives in [`dental-clinic/
 | Name | Value |
 |------|--------|
 | `AUTH_SECRET` | `openssl rand -base64 32` |
+| `AUTH_TRUST_HOST` | `true` |
+| `AUTH_URL` | `https://dental-appointment-psi.vercel.app` (no trailing slash) |
 | `DATABASE_URL` | Neon **pooled** connection string |
 | `DIRECT_URL` | Neon **direct** connection string |
-| `AUTH_URL` | Your Vercel URL, e.g. `https://your-app.vercel.app` |
 
 4. Deploy. The build runs `prisma migrate deploy`, which creates the tables on Neon.
 

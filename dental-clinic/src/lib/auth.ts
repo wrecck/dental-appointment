@@ -4,6 +4,9 @@ import { compare } from "bcryptjs";
 import prisma from "./prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Required on Vercel / reverse proxies so Auth.js trusts the request host
+  trustHost: true,
+  secret: process.env.AUTH_SECRET,
   providers: [
     Credentials({
       name: "credentials",
@@ -67,6 +70,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
     strategy: "jwt",
