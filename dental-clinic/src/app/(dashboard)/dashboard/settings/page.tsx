@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditingUser, setIsEditingUser] = useState(false);
 
   const isOwner = session?.user?.role === "owner";
 
@@ -166,6 +168,41 @@ export default function SettingsPage() {
       toast.success(`User ${!isActive ? "activated" : "deactivated"}`);
     } catch {
       toast.error("Failed to update user status");
+    }
+  };
+
+  const saveUserEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingUser) return;
+    setIsEditingUser(true);
+
+    const formData = new FormData(event.currentTarget);
+    const data: { name: string; email?: string; role?: string } = {
+      name: formData.get("name") as string,
+    };
+    if (isOwner) {
+      data.email = formData.get("email") as string;
+      if (editingUser.role !== "owner") {
+        data.role = formData.get("role") as string;
+      }
+    }
+
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update");
+
+      setUsers(users.map((u) => (u.id === editingUser.id ? result : u)));
+      setEditingUser(null);
+      toast.success("Team member updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update member");
+    } finally {
+      setIsEditingUser(false);
     }
   };
 
@@ -383,54 +420,145 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      !user.isActive ? "opacity-50 bg-gray-50" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold">
-                          {user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{user.name}</p>
-                          <Badge className={`capitalize ${roleColors[user.role]}`}>
-                            {user.role === "owner" && <Shield className="h-3 w-3 mr-1" />}
-                            {user.role}
-                          </Badge>
-                          {!user.isActive && (
-                            <Badge variant="outline" className="text-red-600">
-                              Inactive
-                            </Badge>
-                          )}
+                {users.map((user) => {
+                  const canEdit = isOwner || session?.user?.id === user.id;
+                  return (
+                    <div
+                      key={user.id}
+                      className={`flex items-center justify-between gap-3 p-4 rounded-lg border ${
+                        !user.isActive ? "opacity-50 bg-gray-50" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                          <span className="text-teal-800 font-semibold">
+                            {user.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium">{user.name}</p>
+                            <Badge className={`capitalize ${roleColors[user.role]}`}>
+                              {user.role === "owner" && <Shield className="h-3 w-3 mr-1" />}
+                              {user.role}
+                            </Badge>
+                            {!user.isActive && (
+                              <Badge variant="outline" className="text-red-600">
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {canEdit && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingUser(user)}
+                          >
+                            <Edit className="mr-1.5 h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                        )}
+                        {isOwner && user.role !== "owner" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleUserStatus(user.id, user.isActive)}
+                          >
+                            {user.isActive ? "Deactivate" : "Activate"}
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    {isOwner && user.role !== "owner" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
-                      >
-                        {user.isActive ? "Deactivate" : "Activate"}
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
+
+          <Dialog
+            open={Boolean(editingUser)}
+            onOpenChange={(open) => {
+              if (!open) setEditingUser(null);
+            }}
+          >
+            <DialogContent>
+              {editingUser && (
+                <form onSubmit={saveUserEdit}>
+                  <DialogHeader>
+                    <DialogTitle>Edit team member</DialogTitle>
+                    <DialogDescription>
+                      Update name{isOwner ? ", email, and role" : ""}.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editName">Name *</Label>
+                      <Input
+                        id="editName"
+                        name="name"
+                        defaultValue={editingUser.name}
+                        required
+                        disabled={isEditingUser}
+                      />
+                    </div>
+                    {isOwner && (
+                      <div className="space-y-2">
+                        <Label htmlFor="editEmail">Email *</Label>
+                        <Input
+                          id="editEmail"
+                          name="email"
+                          type="email"
+                          defaultValue={editingUser.email}
+                          required
+                          disabled={isEditingUser}
+                        />
+                      </div>
+                    )}
+                    {isOwner && editingUser.role !== "owner" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="editRole">Role</Label>
+                        <Select name="role" defaultValue={editingUser.role} disabled={isEditingUser}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="dentist">Dentist</SelectItem>
+                            <SelectItem value="receptionist">Receptionist</SelectItem>
+                            <SelectItem value="assistant">Assistant</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditingUser(null)}
+                      disabled={isEditingUser}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isEditingUser}>
+                      {isEditingUser && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Save
+                    </Button>
+                  </DialogFooter>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
