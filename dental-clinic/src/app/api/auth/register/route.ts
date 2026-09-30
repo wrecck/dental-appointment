@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { uniqueClinicSlug } from "@/lib/slug";
 
 export async function POST(request: Request) {
   try {
@@ -39,6 +40,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const bookingSlug = await uniqueClinicSlug(clinicName, async (slug) => {
+      const found = await prisma.clinic.findUnique({ where: { bookingSlug: slug } });
+      return Boolean(found);
+    });
+
     // Hash password
     const hashedPassword = await hash(password, 12);
 
@@ -49,6 +55,8 @@ export async function POST(request: Request) {
           name: clinicName,
           email: clinicEmail,
           phone: clinicPhone || null,
+          bookingSlug,
+          bookingEnabled: true,
         },
       });
 
