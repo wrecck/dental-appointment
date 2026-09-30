@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarBlank, CheckCircle, SpinnerGap } from "@phosphor-icons/react";
+import { accentToSoftBackground, DEFAULT_BOOKING_ACCENT } from "@/lib/booking-brand";
 
 interface BookingData {
-  clinic: { name: string; phone: string | null; address: string | null; slug: string };
+  clinic: {
+    name: string;
+    phone: string | null;
+    address: string | null;
+    slug: string;
+    accentColor: string;
+    logo: string | null;
+    customCss: string;
+  };
   dentists: { id: string; name: string }[];
   slots: string[];
   appointmentTypes: { value: string; label: string }[];
@@ -53,6 +62,9 @@ export default function PublicBookingPage() {
     }
     load();
   }, [slug]);
+
+  const accent = data?.clinic.accentColor || DEFAULT_BOOKING_ACCENT;
+  const softBg = useMemo(() => accentToSoftBackground(accent), [accent]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,29 +107,40 @@ export default function PublicBookingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--book-bg)]">
-        <SpinnerGap className="h-8 w-8 animate-spin text-[var(--brand)]" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: softBg }}>
+        <SpinnerGap className="h-8 w-8 animate-spin" style={{ color: accent }} />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--book-bg)] p-6">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#f3f7f7]">
         <p className="text-muted-foreground">{error || "Not found"}</p>
       </div>
     );
   }
 
+  const brandStyle = {
+    ["--book-accent" as string]: accent,
+    ["--book-soft" as string]: softBg,
+  } as React.CSSProperties;
+
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--book-bg)] p-6">
-        <div className="max-w-md w-full text-center space-y-4 rounded-2xl bg-white/80 backdrop-blur border border-black/5 p-8 shadow-sm">
-          <div className="mx-auto w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center">
-            <CheckCircle weight="duotone" className="h-8 w-8 text-teal-700" />
+      <div className="booking-root min-h-screen flex items-center justify-center p-6" style={{ ...brandStyle, background: softBg }}>
+        {data.clinic.customCss ? <style>{data.clinic.customCss}</style> : null}
+        <div className="booking-card max-w-md w-full text-center space-y-4 rounded-2xl bg-white/80 backdrop-blur border border-black/5 p-8 shadow-sm">
+          <div
+            className="mx-auto w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: softBg }}
+          >
+            <CheckCircle weight="duotone" className="h-8 w-8" style={{ color: accent }} />
           </div>
-          <h1 className="font-heading text-2xl tracking-tight">Booking request received</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <h1 className="booking-title font-heading text-2xl tracking-tight">
+            Booking request received
+          </h1>
+          <p className="booking-subtitle text-muted-foreground text-sm leading-relaxed">
             {data.clinic.name} received your appointment request. They may contact you to confirm.
           </p>
         </div>
@@ -128,30 +151,46 @@ export default function PublicBookingPage() {
   const minDate = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="min-h-screen bg-[var(--book-bg)] text-foreground">
-      <div className="absolute inset-0 pointer-events-none opacity-40"
+    <div
+      className="booking-root min-h-screen text-foreground"
+      style={{ ...brandStyle, background: softBg }}
+    >
+      {data.clinic.customCss ? <style>{data.clinic.customCss}</style> : null}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-50"
         style={{
-          backgroundImage:
-            "radial-gradient(ellipse 80% 50% at 20% -10%, rgba(13,115,119,0.18), transparent), radial-gradient(ellipse 60% 40% at 90% 10%, rgba(45,212,191,0.12), transparent)",
+          backgroundImage: `radial-gradient(ellipse 80% 50% at 20% -10%, ${softBg}, transparent), radial-gradient(ellipse 60% 40% at 90% 10%, ${softBg}, transparent)`,
         }}
       />
       <div className="relative mx-auto max-w-lg px-4 py-8 sm:py-12">
-        <div className="mb-8 text-center space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/70 border border-black/5 px-3 py-1 text-xs font-medium text-teal-800">
-            <CalendarBlank weight="duotone" className="h-3.5 w-3.5" />
-            Online booking
-          </div>
-          <h1 className="font-heading text-3xl sm:text-4xl tracking-tight">
+        <div className="mb-8 text-center space-y-3">
+          {data.clinic.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.clinic.logo}
+              alt={`${data.clinic.name} logo`}
+              className="booking-logo mx-auto h-14 w-auto object-contain"
+            />
+          ) : (
+            <div
+              className="inline-flex items-center gap-2 rounded-full bg-white/70 border border-black/5 px-3 py-1 text-xs font-medium"
+              style={{ color: accent }}
+            >
+              <CalendarBlank weight="duotone" className="h-3.5 w-3.5" />
+              Online booking
+            </div>
+          )}
+          <h1 className="booking-title font-heading text-3xl sm:text-4xl tracking-tight">
             {data.clinic.name}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="booking-subtitle text-sm text-muted-foreground">
             Pick a time that works — we&apos;ll take care of the rest.
           </p>
         </div>
 
         <form
           onSubmit={onSubmit}
-          className="rounded-2xl bg-white/85 backdrop-blur border border-black/5 shadow-sm p-5 sm:p-6 space-y-5"
+          className="booking-card rounded-2xl bg-white/85 backdrop-blur border border-black/5 shadow-sm p-5 sm:p-6 space-y-5"
         >
           {error && (
             <div className="rounded-xl bg-red-50 text-red-700 text-sm px-3 py-2">
@@ -239,21 +278,25 @@ export default function PublicBookingPage() {
           <div className="space-y-2">
             <Label>Time</Label>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {data.slots.map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`rounded-xl border px-2 py-2 text-sm transition-colors ${
-                    selectedSlot === slot
-                      ? "border-teal-700 bg-teal-700 text-white"
-                      : "border-black/10 bg-white hover:border-teal-600/40"
-                  }`}
-                >
-                  {slot}
-                </button>
-              ))}
+              {data.slots.map((slot) => {
+                const active = selectedSlot === slot;
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setSelectedSlot(slot)}
+                    className="booking-slot rounded-xl border px-2 py-2 text-sm transition-colors"
+                    style={
+                      active
+                        ? { background: accent, borderColor: accent, color: "#fff" }
+                        : { borderColor: "rgba(0,0,0,0.1)", background: "#fff" }
+                    }
+                  >
+                    {slot}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -271,7 +314,8 @@ export default function PublicBookingPage() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-11 rounded-xl bg-teal-800 hover:bg-teal-700 text-white"
+            className="booking-submit w-full h-11 rounded-xl text-white hover:opacity-90"
+            style={{ background: accent }}
           >
             {isSubmitting ? (
               <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />

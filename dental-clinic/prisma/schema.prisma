@@ -18,11 +18,14 @@ model Clinic {
   email          String   @unique
   phone          String?
   address        String?
-  logo           String?
-  bookingSlug    String?  @unique
-  bookingEnabled Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  logo               String?
+  bookingSlug        String?  @unique
+  bookingEnabled     Boolean  @default(true)
+  bookingAccentColor String?  @default("#0d7377")
+  bookingLogo        String?
+  bookingCustomCss   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relations
   users         User[]
