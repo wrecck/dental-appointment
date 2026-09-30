@@ -116,7 +116,7 @@ export default function PublicBookingPage() {
           <div className="mx-auto w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center">
             <CheckCircle weight="duotone" className="h-8 w-8 text-teal-700" />
           </div>
-          <h1 className="font-heading text-2xl tracking-tight">You&apos;re booked</h1>
+          <h1 className="font-heading text-2xl tracking-tight">Booking request received</h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
             {data.clinic.name} received your appointment request. They may contact you to confirm.
           </p>
