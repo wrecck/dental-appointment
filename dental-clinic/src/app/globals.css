@@ -104,3 +104,31 @@
     font-family: var(--font-heading), "Instrument Serif", ui-serif, Georgia, serif;
   }
 }
+
+@keyframes landing-hero-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes landing-hero-copy {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-hero-zoom {
+  animation: landing-hero-zoom 8s ease-out forwards;
+}
+
+.landing-hero-copy {
+  animation: landing-hero-copy 0.9s ease-out 0.15s both;
+}

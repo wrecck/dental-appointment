@@ -17,8 +17,9 @@ const heading = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "My Dental Clinic",
-  description: "Multi-tenant dental clinic management system",
+  title: "My Dental Clinic — Multi-tenant dental practice software",
+  description:
+    "Run scheduling, patient records, payments, and embeddable online booking for one clinic or many.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
